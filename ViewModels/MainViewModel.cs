@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Ps4PkgSender.Models;
 
 namespace Ps4PkgSender.ViewModels;
@@ -18,26 +20,38 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<PKGInfo> Pkgs { get; } = [];
     public Dictionary<string, string> pkgPaths = [];
 
+    private bool CanDelete() => Pkgs.Count > 0;
+
     public void AddPKG(string path)
     {
-        if (pkgPaths.TryAdd(Path.GetFileName(path), path))
+        try
+        {   
+            if (pkgPaths.TryAdd(Path.GetFileName(path), path))
+            {
+                Pkgs.Add(PKGUtil.GetInfoFromPath(path));
+            }
+        } catch (Exception e)
         {
-            Pkgs.Add(PKGUtil.GetPKGFromPath(path));
+            pkgPaths.Remove(Path.GetFileName(path));
+            System.Console.WriteLine(e);
         }
     }
 
-    public void RemovePKG(int index)
+    [RelayCommand]
+    public void RemovePKG(PKGInfo pkg)
     {
-        pkgPaths.Remove(Pkgs[index].FileName);
-        Pkgs.RemoveAt(index);
+        if (pkgPaths.Remove(pkg.FileName))
+            Pkgs.Remove(pkg);
     }
 
+    [RelayCommand(CanExecute = nameof(CanDelete))]
     public void ClearPKGs()
     {
         pkgPaths.Clear();
         Pkgs.Clear();
     }
 
+    [RelayCommand(CanExecute = nameof(CanDelete))]
     public async Task StartTransfer()
     {
         using RequestSender sender = new();
@@ -59,5 +73,6 @@ public partial class MainViewModel : ViewModelBase
 
             httpServer.FileTransferred -= OnTransferDone;
         }
+        httpServer.StopServing();
     }
 }

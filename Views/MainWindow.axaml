@@ -4,7 +4,39 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="Ps4PkgSender.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="PS4 PKG Sender">
+        Title="PS4 PKG Sender"
+        Background="Gray">
+    <Grid>
+        <ScrollViewer>
+            <StackPanel Orientation="Vertical">
+                <ListBox ItemsSource="{Binding Pkgs}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="{Binding ImageBytes}"></Image>
+                                <StackPanel Orientation="Vertical">
+                                    <TextBlock Text="{Binding Title}"></TextBlock>
+                                    <TextBlock Text="{Binding TitleID}"></TextBlock>
+                                    <TextBlock Text="{Binding Type}"></TextBlock>
+                                    <TextBlock Text="{Binding AppVer}"></TextBlock>
+                                    <TextBlock Text="{Binding FileName}"></TextBlock>
+                                    <TextBlock Text="{Binding Size}"></TextBlock>
+                                    <Button Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).RemovePKGCommand}"
+                                            CommandParameter="{Binding}"></Button>
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+        </ScrollViewer>
+        <StackPanel Orientation="Horizontal">
+            <Button Click="OnAddPKGClicked">Add PKG</Button>
+            <Button Command="{Binding ClearPKGsCommand}">Clear PKGs</Button>
+            <Button Command="{Binding StartTransferCommand}">Send to PS4</Button>
+        </StackPanel>
+    </Grid>
 </Window>
