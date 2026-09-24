@@ -83,8 +83,26 @@ public partial class MainViewModel : ViewModelBase
         using RequestSender sender = new();
         using PkgServer httpServer = new(PcIP);
 
-        httpServer.StartServing(pkgPaths);
-        await sender.ConnectToPs4(Ps4IP);
+        try
+        {   
+            httpServer.StartServing(pkgPaths);
+        } catch (Exception e)
+        {
+            System.Console.WriteLine($"Error starting http server: {e}");
+            httpServer.StopServing();
+            return;
+        }
+        
+        try
+        {
+            await sender.ConnectToPs4(Ps4IP);
+        } catch (Exception e)
+        {
+            System.Console.WriteLine($"Error connecting to the PS4: {e}");
+            httpServer.StopServing();
+            return;
+        }
+
         foreach (PKGInfo pkg in Pkgs.ToList().OrderBy((pkgInfo) => pkgInfo.Type))
         {            
             var tcs = new TaskCompletionSource();

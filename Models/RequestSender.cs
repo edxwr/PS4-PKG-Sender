@@ -15,23 +15,15 @@ public class RequestSender : IDisposable
     {
         if (IPAddress.TryParse(ps4IP, out IPAddress? IP) == false)
         {
-            Console.Write("Invalid PS4 IP");
-            return;
+            throw new("Invalid PS4 IP");
         }
         else if (IP.AddressFamily != AddressFamily.InterNetwork)
         {
-            Console.Write("Not IPv4 IP Address");
-            return;
+            throw new("Not IPv4 IP Address");
         }
-
-        try
-        {
-            await client.ConnectAsync(ps4IP, 9090);
-            Console.Write("Connected to PS4");
-        } catch
-        {
-            Console.Write("Error connecting to PS4");
-        }
+        
+        await client.ConnectAsync(ps4IP, 9090);
+        Console.Write("Connected to PS4");
     }
 
     async public Task SendInstallCommand(string pcIP, string pkgName)

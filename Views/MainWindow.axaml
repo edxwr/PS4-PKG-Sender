@@ -9,42 +9,60 @@
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
         Title="PS4 PKG Sender"
-        Background="Gray">
+        Background="White">
     <Window.Resources>
         <conv:BytesToBitmapConverter x:Key="bytesToImage"></conv:BytesToBitmapConverter>
     </Window.Resources>
-    <Grid RowDefinitions="700, *, *">
-        <ScrollViewer Name="pkgs">
-            <StackPanel Orientation="Vertical">
-                <ListBox ItemsSource="{Binding Pkgs}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <Image Source="{Binding ImageBytes, Converter={StaticResource bytesToImage}}" Width="150" Height="150"></Image>
-                                <StackPanel Orientation="Vertical">
-                                    <TextBlock Text="{Binding Title}"></TextBlock>
-                                    <TextBlock Text="{Binding TitleID}"></TextBlock>
-                                    <TextBlock Text="{Binding Type}"></TextBlock>
-                                    <TextBlock Text="{Binding AppVer}"></TextBlock>
-                                    <TextBlock Text="{Binding FileName}"></TextBlock>
-                                    <TextBlock Text="{Binding Size}"></TextBlock>
-                                    <Button Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).RemovePKGCommand}"
-                                            CommandParameter="{Binding}">Remove PKG</Button>
-                                </StackPanel>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </StackPanel>
-        </ScrollViewer>
-        <StackPanel Name="pkgCommands" Orientation="Horizontal">
-            <Button Click="OnAddPKGClicked">Add PKG</Button>
-            <Button Command="{Binding ClearPKGsCommand}">Clear PKGs</Button>
-            <Button Command="{Binding StartTransferCommand}">Send to PS4</Button>
+    <Grid RowDefinitions="*, auto, auto" RowSpacing="10">
+        <ListBox Grid.Row="0" ItemsSource="{Binding Pkgs}" Margin="10 10 10 0">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="{Binding ImageBytes, Converter={StaticResource bytesToImage}}" Width="150" Height="150"></Image>
+                        <StackPanel Orientation="Vertical" Margin="20 0 0 0" VerticalAlignment="Center">
+                            <TextBlock>
+                                <Run Text="Title: " FontWeight="Bold"/>
+                                <Run Text="{Binding Title}"/>
+                            </TextBlock>
+                            <TextBlock>
+                                <Run Text="Title ID: " FontWeight="Bold"/>
+                                <Run Text="{Binding TitleID}"/>
+                            </TextBlock>
+                            <TextBlock>
+                                <Run Text="Type: " FontWeight="Bold"/>
+                                <Run Text="{Binding Type}"/>
+                            </TextBlock>
+                            <TextBlock>
+                                <Run Text="Version: " FontWeight="Bold"/>
+                                <Run Text="{Binding AppVer}"/>
+                            </TextBlock>
+                            <TextBlock>
+                                <Run Text="File Name: " FontWeight="Bold"/>
+                                <Run Text="{Binding FileName}"/>
+                            </TextBlock>
+                            <TextBlock>
+                                <Run Text="Size: " FontWeight="Bold"/>
+                                <Run Text="{Binding Size, StringFormat={}{0} GB}"/>
+                            </TextBlock>
+                            <Button Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).RemovePKGCommand}"
+                                    CommandParameter="{Binding}"
+                                    Background="Red"
+                                    Margin="0 10 0 0">Remove PKG</Button>
+                        </StackPanel>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <StackPanel Grid.Row="2" Name="pkgCommands" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0 0 10 10">
+            <Button Click="OnAddPKGClicked" Background="LightGreen">Add PKG</Button>
+            <Button Command="{Binding ClearPKGsCommand}" Background="Red">Clear PKGs</Button>
+            <Button Command="{Binding StartTransferCommand}" Background="Green">Send to PS4</Button>
         </StackPanel>
-        <StackPanel Name="ips" Orientation="Horizontal">
-            <TextBlock Name="pc" Width="150" Text="{Binding PcIP}"></TextBlock>
-            <TextBox Name="ps4" Height="150" Text="{Binding Ps4IP}" PlaceholderText="192.168.0.xx"></TextBox>
+        <StackPanel Grid.Row="1" Name="ips" Orientation="Horizontal" HorizontalAlignment="Left" Spacing="10" Margin="10 0 0 0">
+            <TextBlock Text="PC IP: " VerticalAlignment="Center"/>
+            <TextBlock Name="pc" Width="150" VerticalAlignment="Center" Text="{Binding PcIP}"/>
+            <TextBlock Text="PS4 IP: " VerticalAlignment="Center"/>
+            <TextBox Name="ps4" MaxLength="15" Width="150" Text="{Binding Ps4IP}" PlaceholderText="192.168.0.xx"/>
         </StackPanel>
     </Grid>
 </Window>
