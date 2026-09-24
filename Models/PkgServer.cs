@@ -11,10 +11,9 @@ public class PkgServer : IDisposable
     private readonly HttpListener server;
     public event Action? FileTransferred;
 
-    public PkgServer()
+    public PkgServer(string localIp)
     {
         server = new HttpListener();
-        string localIp = Dns.GetHostEntry(Dns.GetHostName()).AddressList[0].ToString();
         server.Prefixes.Add($"http://{localIp}:7777/");
     }
 

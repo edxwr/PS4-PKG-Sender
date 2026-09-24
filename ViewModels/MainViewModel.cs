@@ -3,10 +3,14 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Ps4PkgSender.Models;
+using Ps4PkgSender.Models.Structs;
+using Ps4PkgSender.Models.Utils;
 
 namespace Ps4PkgSender.ViewModels;
 
@@ -15,12 +19,34 @@ public partial class MainViewModel : ViewModelBase
     public string PcIP { get; } = "";
 
     [ObservableProperty]
-    public partial string Ps4IP { get; set; }
+    [NotifyCanExecuteChangedFor(nameof(StartTransferCommand))]
+    public partial string Ps4IP { get; set; } = "";
 
     public ObservableCollection<PKGInfo> Pkgs { get; } = [];
     public Dictionary<string, string> pkgPaths = [];
 
+    public MainViewModel()
+    {
+        PcIP = Dns.GetHostEntry(String.Empty).AddressList.First(
+            ip => ip.AddressFamily == AddressFamily.InterNetwork
+        ).ToString();
+
+        Pkgs.CollectionChanged += delegate {
+            StartTransferCommand.NotifyCanExecuteChanged();
+            ClearPKGsCommand.NotifyCanExecuteChanged();
+        };
+    }
+
     private bool CanDelete() => Pkgs.Count > 0;
+    private bool CanStartTransfer()
+    {
+        if (IPAddress.TryParse(Ps4IP, out IPAddress? ip) == false)
+            return false;
+        else if (ip.AddressFamily != AddressFamily.InterNetwork)
+            return false;
+
+        return Pkgs.Count > 0;
+    }
 
     public void AddPKG(string path)
     {
@@ -51,11 +77,11 @@ public partial class MainViewModel : ViewModelBase
         Pkgs.Clear();
     }
 
-    [RelayCommand(CanExecute = nameof(CanDelete))]
+    [RelayCommand(CanExecute = nameof(CanStartTransfer))]
     public async Task StartTransfer()
     {
         using RequestSender sender = new();
-        using PkgServer httpServer = new();
+        using PkgServer httpServer = new(PcIP);
 
         httpServer.StartServing(pkgPaths);
         await sender.ConnectToPs4(Ps4IP);

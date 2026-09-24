@@ -1,4 +1,4 @@
-namespace Ps4PkgSender.Models;
+namespace Ps4PkgSender.Models.Structs;
 
 public enum PKGType
 {

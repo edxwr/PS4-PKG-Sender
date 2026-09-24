@@ -2,17 +2,10 @@ using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
+using Ps4PkgSender.Models.Structs;
 
-namespace Ps4PkgSender.Models;
+namespace Ps4PkgSender.Models.Utils;
 
-public struct PKGEntry
-{
-    public UInt32 filenameOffset;
-    public UInt32 flags1;
-    public UInt32 flags2;
-    public UInt32 fileOffset;
-    public UInt32 size;
-}
 public static class PKGUtil
 {
     // https://www.psdevwiki.com/ps4/PKG_files#Structure

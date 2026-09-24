@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Ps4PkgSender.Models;
+namespace Ps4PkgSender.Models.Structs;
 
 public class RequestSender : IDisposable
 {
@@ -37,7 +37,7 @@ public class RequestSender : IDisposable
     async public Task SendInstallCommand(string pcIP, string pkgName)
     {
         NetworkStream stream = client.GetStream();
-        InstallRequest request = new InstallRequest { Url = $"http://{pcIP}/{pkgName}" };
+        InstallRequest request = new() { Url = $"http://{pcIP}:7777/{pkgName}" };
         byte[] bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request));
         await stream.WriteAsync(bytes);
         await stream.FlushAsync();

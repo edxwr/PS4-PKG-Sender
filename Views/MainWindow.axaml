@@ -3,20 +3,24 @@
         xmlns:vm="using:Ps4PkgSender.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:conv="using:Ps4PkgSender.Models.Converters"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Ps4PkgSender.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
         Title="PS4 PKG Sender"
         Background="Gray">
-    <Grid>
-        <ScrollViewer>
+    <Window.Resources>
+        <conv:BytesToBitmapConverter x:Key="bytesToImage"></conv:BytesToBitmapConverter>
+    </Window.Resources>
+    <Grid RowDefinitions="700, *, *">
+        <ScrollViewer Name="pkgs">
             <StackPanel Orientation="Vertical">
                 <ListBox ItemsSource="{Binding Pkgs}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
-                                <Image Source="{Binding ImageBytes}"></Image>
+                                <Image Source="{Binding ImageBytes, Converter={StaticResource bytesToImage}}" Width="150" Height="150"></Image>
                                 <StackPanel Orientation="Vertical">
                                     <TextBlock Text="{Binding Title}"></TextBlock>
                                     <TextBlock Text="{Binding TitleID}"></TextBlock>
@@ -25,7 +29,7 @@
                                     <TextBlock Text="{Binding FileName}"></TextBlock>
                                     <TextBlock Text="{Binding Size}"></TextBlock>
                                     <Button Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).RemovePKGCommand}"
-                                            CommandParameter="{Binding}"></Button>
+                                            CommandParameter="{Binding}">Remove PKG</Button>
                                 </StackPanel>
                             </StackPanel>
                         </DataTemplate>
@@ -33,10 +37,14 @@
                 </ListBox>
             </StackPanel>
         </ScrollViewer>
-        <StackPanel Orientation="Horizontal">
+        <StackPanel Name="pkgCommands" Orientation="Horizontal">
             <Button Click="OnAddPKGClicked">Add PKG</Button>
             <Button Command="{Binding ClearPKGsCommand}">Clear PKGs</Button>
             <Button Command="{Binding StartTransferCommand}">Send to PS4</Button>
+        </StackPanel>
+        <StackPanel Name="ips" Orientation="Horizontal">
+            <TextBlock Name="pc" Width="150" Text="{Binding PcIP}"></TextBlock>
+            <TextBox Name="ps4" Height="150" Text="{Binding Ps4IP}" PlaceholderText="192.168.0.xx"></TextBox>
         </StackPanel>
     </Grid>
 </Window>

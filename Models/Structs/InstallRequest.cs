@@ -1,7 +1,7 @@
 using System;
 using System.Text.Json.Serialization;
 
-namespace Ps4PkgSender.Models;
+namespace Ps4PkgSender.Models.Structs;
 
 public record InstallRequest
 {
