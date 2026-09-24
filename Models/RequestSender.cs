@@ -28,11 +28,17 @@ public class RequestSender : IDisposable
 
     async public Task SendInstallCommand(string pcIP, string pkgName)
     {
+        System.Console.WriteLine($"Sending \"{pkgName}\" Install Command");
+
         NetworkStream stream = client.GetStream();
         InstallRequest request = new() { Url = $"http://{pcIP}:7777/{pkgName}" };
         byte[] bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request));
         await stream.WriteAsync(bytes);
         await stream.FlushAsync();
+
+        client.Close(); // REFACTOR SA SE INCHIDA CLIENTUL DUPA MESAJ
+
+        System.Console.WriteLine("Sent install command");
     }
 
     public void Dispose()

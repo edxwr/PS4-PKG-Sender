@@ -20,12 +20,14 @@ public class PkgServer : IDisposable
     public void StartServing(Dictionary<string, string> pkgPaths)
     {
         server.Start();
+        System.Console.WriteLine("Server Started Serving");
         Task.Run(() => ListenForPs4(pkgPaths));
     }
 
     public void StopServing()
     {
         server.Stop();
+        System.Console.WriteLine("Server Stopped Serving");
     }
 
     async private Task ListenForPs4(Dictionary<string, string> pkgPaths)
@@ -47,6 +49,7 @@ public class PkgServer : IDisposable
     {
         var response = ctx.Response;
         var requestedPkg = ctx.Request.RawUrl?.TrimStart('/');
+        System.Console.WriteLine($"Processing requested pkg: {requestedPkg}");
 
         if (requestedPkg is null)
         {
@@ -78,6 +81,8 @@ public class PkgServer : IDisposable
         }
         output.Close();
         FileTransferred?.Invoke();
+
+        System.Console.WriteLine($"Processed requested pkg: {requestedPkg}");
     }
 
     public void Dispose()

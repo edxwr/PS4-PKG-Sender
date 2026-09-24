@@ -102,6 +102,7 @@ public partial class MainViewModel : ViewModelBase
             httpServer.StopServing();
             return;
         }
+        System.Console.WriteLine("Connected to ps4");
 
         foreach (PKGInfo pkg in Pkgs.ToList().OrderBy((pkgInfo) => pkgInfo.Type))
         {            
@@ -118,5 +119,6 @@ public partial class MainViewModel : ViewModelBase
             httpServer.FileTransferred -= OnTransferDone;
         }
         httpServer.StopServing();
+        System.Console.WriteLine("All files transferred");
     }
 }
