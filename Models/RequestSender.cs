@@ -16,15 +16,17 @@ public class RequestSender : IDisposable
 
     public RequestSender(string ps4IP)
     {
-        this.client.BaseAddress = new Uri(ps4IP + ":12800");
+        this.client.BaseAddress = new Uri($"http://{ps4IP}:12800");
     }
 
     public async Task SendInstallCommand(string pcIP, string pkgName)
     {
         System.Console.WriteLine($"Sending \"{pkgName}\" Install Command");
 
-        InstallRequest request = new();
-        request.Packages = [$"http://{pcIP}:7777/{pkgName}"];
+        InstallRequest request = new()
+        {  
+            Packages = [$"http://{pcIP}:7777/{pkgName}"]
+        };
 
         using var response = await client.PostAsJsonAsync("api/install", request);
 

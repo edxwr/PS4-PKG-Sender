@@ -77,12 +77,10 @@ public class PkgServer : IDisposable
         using FileStream fs = File.OpenRead(fullPkgPath);
         byte[] buffer = new byte[1024 * 64];
         int bytesRead;
-        long totalTransferred = 0;
         while ((bytesRead = await fs.ReadAsync(buffer)) > 0)
         {
             await output.WriteAsync(buffer.AsMemory(0, bytesRead));
-            totalTransferred += bytesRead;
-            BytesTransferred?.Invoke(totalTransferred);
+            BytesTransferred?.Invoke(bytesRead);
         }
         output.Close();
         FileTransferred?.Invoke();
