@@ -17,7 +17,7 @@ public class UnitTest1
     {
         pkgPaths.Add(fileName, path);
 
-        using RequestSender sender = new();
+        using RequestSender sender = new(ps4IP);
         using PkgServer httpServer = new(pcIP);
 
         try
@@ -29,17 +29,6 @@ public class UnitTest1
             httpServer.StopServing();
             return;
         }
-        
-        try
-        {
-            await sender.ConnectToPs4(ps4IP);
-        } catch (Exception e)
-        {
-            System.Console.WriteLine($"Error connecting to the PS4: {e}");
-            httpServer.StopServing();
-            return;
-        }
-        System.Console.WriteLine("Connected to ps4");
 
         var tcs = new TaskCompletionSource();
         void OnTransferDone(){

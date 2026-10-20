@@ -13,7 +13,7 @@
     <Window.Resources>
         <conv:BytesToBitmapConverter x:Key="bytesToImage"></conv:BytesToBitmapConverter>
     </Window.Resources>
-    <Grid RowDefinitions="*, auto, auto" RowSpacing="10">
+    <Grid RowDefinitions="*, auto, auto, auto" RowSpacing="10">
         <ListBox Grid.Row="0" ItemsSource="{Binding Pkgs}" Margin="10 10 10 0">
             <ListBox.ItemTemplate>
                 <DataTemplate>
@@ -53,16 +53,21 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        <StackPanel Grid.Row="2" Name="pkgCommands" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0 0 10 10">
-            <Button Click="OnAddPKGClicked" Background="LightGreen">Add PKG</Button>
-            <Button Command="{Binding ClearPKGsCommand}" Background="Red">Clear PKGs</Button>
-            <Button Command="{Binding StartTransferCommand}" Background="Green">Send to PS4</Button>
-        </StackPanel>
         <StackPanel Grid.Row="1" Name="ips" Orientation="Horizontal" HorizontalAlignment="Left" Spacing="10" Margin="10 0 0 0">
             <TextBlock Text="PC IP: " VerticalAlignment="Center"/>
             <TextBlock Name="pc" Width="150" VerticalAlignment="Center" Text="{Binding PcIP}"/>
             <TextBlock Text="PS4 IP: " VerticalAlignment="Center"/>
             <TextBox Name="ps4" MaxLength="15" Width="150" Text="{Binding Ps4IP}" PlaceholderText="192.168.0.xx"/>
+        </StackPanel>
+        <StackPanel Grid.Row="2" Name="pkgCommands" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0 0 10 10">
+            <Button Click="OnAddPKGClicked" Background="LightGreen">Add PKG</Button>
+            <Button Command="{Binding ClearPKGsCommand}" Background="Red">Clear PKGs</Button>
+            <Button Command="{Binding StartTransferCommand}" Background="Green">Send to PS4</Button>
+        </StackPanel>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="10 10 10 10">
+            <ProgressBar Minimum="0" Maximum="{Binding TotalSize}"></ProgressBar>
+            <Button Command="{Binding PauseTransferCommand}" Background="Yellow">Pause</Button>
+            <Button Command="{Binding CancelTransferCommand}" Background="Red">Cancel</Button>
         </StackPanel>
     </Grid>
 </Window>

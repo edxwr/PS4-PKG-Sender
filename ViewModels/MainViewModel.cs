@@ -23,11 +23,17 @@ public partial class MainViewModel : ViewModelBase
     public partial string Ps4IP { get; set; } = "";
 
     public ObservableCollection<PKGInfo> Pkgs { get; } = [];
-    public Dictionary<string, string> pkgPaths = [];
+    private Dictionary<string, string> pkgPaths = [];
 
-    public TaskID taskID = new();
-    public long transferredSize = 0;
-    public long totalSize = 0;
+    private RequestSender sender;
+    private readonly PkgServer httpServer;
+
+    private TaskID taskID = new();
+    private bool isPaused = false;
+    [ObservableProperty]
+    public partial long TransferredSize { get; set; }
+    [ObservableProperty]
+    public partial long TotalSize { get; set; }
 
     public MainViewModel()
     {
@@ -39,6 +45,9 @@ public partial class MainViewModel : ViewModelBase
             StartTransferCommand.NotifyCanExecuteChanged();
             ClearPKGsCommand.NotifyCanExecuteChanged();
         };
+
+        httpServer = new(PcIP);
+        sender = new("");
     }
 
     private bool CanDelete() => Pkgs.Count > 0;
@@ -84,9 +93,6 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanStartTransfer))]
     public async Task StartTransfer()
     {
-        using RequestSender sender = new(Ps4IP);
-        using PkgServer httpServer = new(PcIP);
-
         try
         {   
             httpServer.StartServing(pkgPaths);
@@ -109,14 +115,14 @@ public partial class MainViewModel : ViewModelBase
 
                 void OnBytesTransferred(long transferredSize)
                 {
-                    this.transferredSize = transferredSize;
+                    this.TransferredSize = transferredSize;
                 }
                 httpServer.BytesTransferred += OnBytesTransferred;
 
                 await sender.SendInstallCommand(PcIP, pkg.FileName);
 
                 taskID.Id = (await sender.GetTaskID(pkg.ContentID, pkg.Type)).Id;
-                totalSize = pkg.Size;
+                TotalSize = pkg.Size;
 
                 await tcs.Task;
                 httpServer.FileTransferred -= OnTransferDone;
@@ -127,7 +133,28 @@ public partial class MainViewModel : ViewModelBase
             }
         }
         httpServer.StopServing();
-        transferredSize = totalSize = 0;
+        TransferredSize = TotalSize = 0;
         System.Console.WriteLine("All files transferred");
+    }
+
+    private bool CanPause() => TotalSize > 0 && !isPaused;
+    [RelayCommand(CanExecute = nameof(CanPause))]
+    public async Task PauseTransfer()
+    {
+        await sender.SendPauseCommand(taskID);
+    }
+
+    private bool CanCancel() => TotalSize > 0;
+    [RelayCommand(CanExecute = nameof(CanCancel))]
+    public async Task CancelTransfer()
+    {
+        await sender.SendCancelCommand(taskID);
+    }
+
+    private bool CanResume() => TotalSize > 0 && isPaused;
+    [RelayCommand(CanExecute = nameof(CanResume))]
+    public async Task ResumeTransfer()
+    {
+        await sender.SendResumeCommand(taskID);
     }
 }
