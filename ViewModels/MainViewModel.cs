@@ -25,6 +25,10 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<PKGInfo> Pkgs { get; } = [];
     public Dictionary<string, string> pkgPaths = [];
 
+    public TaskID taskID = new();
+    public long transferredSize = 0;
+    public long totalSize = 0;
+
     public MainViewModel()
     {
         PcIP = Dns.GetHostEntry(String.Empty).AddressList.First(
@@ -80,7 +84,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanStartTransfer))]
     public async Task StartTransfer()
     {
-        using RequestSender sender = new();
+        using RequestSender sender = new(Ps4IP);
         using PkgServer httpServer = new(PcIP);
 
         try
@@ -92,33 +96,38 @@ public partial class MainViewModel : ViewModelBase
             httpServer.StopServing();
             return;
         }
-        
-        try
-        {
-            await sender.ConnectToPs4(Ps4IP);
-        } catch (Exception e)
-        {
-            System.Console.WriteLine($"Error connecting to the PS4: {e}");
-            httpServer.StopServing();
-            return;
-        }
-        System.Console.WriteLine("Connected to ps4");
 
         foreach (PKGInfo pkg in Pkgs.ToList().OrderBy((pkgInfo) => pkgInfo.Type))
-        {            
-            var tcs = new TaskCompletionSource();
-            void OnTransferDone(){
-                tcs.TrySetResult();
+        {
+            try
+            {
+                var tcs = new TaskCompletionSource();
+                void OnTransferDone(){
+                    tcs.TrySetResult();
+                }
+                httpServer.FileTransferred += OnTransferDone;
+
+                void OnBytesTransferred(long transferredSize)
+                {
+                    this.transferredSize = transferredSize;
+                }
+                httpServer.BytesTransferred += OnBytesTransferred;
+
+                await sender.SendInstallCommand(PcIP, pkg.FileName);
+
+                taskID.Id = (await sender.GetTaskID(pkg.ContentID, pkg.Type)).Id;
+                totalSize = pkg.Size;
+
+                await tcs.Task;
+                httpServer.FileTransferred -= OnTransferDone;
+                httpServer.BytesTransferred -= OnBytesTransferred;
+            } catch (Exception e)
+            {
+                System.Console.WriteLine($"Error while sending PKG {pkg.FileName}: {e}");
             }
-            httpServer.FileTransferred += OnTransferDone;
-
-            await sender.SendInstallCommand(PcIP, pkg.FileName);
-
-            await tcs.Task;
-
-            httpServer.FileTransferred -= OnTransferDone;
         }
         httpServer.StopServing();
+        transferredSize = totalSize = 0;
         System.Console.WriteLine("All files transferred");
     }
 }

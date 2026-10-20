@@ -11,6 +11,7 @@ public record PKGInfo
     public PKGType Type {get; set;} = PKGType.Unknown;
     public string AppVer {get; set;} = "01.00";
     public string FileName {get; set;} = "";
-    public double Size {get; set;} = 0;
+    public long Size {get; set;} = 0;
     public byte[]? ImageBytes { get; set; }
+    public string ContentID {get; set;} = "";
 }

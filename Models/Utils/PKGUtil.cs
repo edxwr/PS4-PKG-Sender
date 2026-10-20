@@ -35,7 +35,7 @@ public static class PKGUtil
         }  
 
         pkgInfo.FileName = Path.GetFileName(path);
-        pkgInfo.Size = Math.Round((double)fs.Length / 1024 / 1024 / 1024, 2);
+        pkgInfo.Size = fs.Length;
         
         return pkgInfo;
     }
@@ -111,6 +111,9 @@ public static class PKGUtil
             {
                 case "APP_VER" or "CONTENT_VER":
                     pkgInfo.AppVer = data;
+                    break;
+                case "CONTENT_ID":
+                    pkgInfo.ContentID = data;
                     break;
                 case "CATEGORY":
                     pkgInfo.Type = GetPKGTypeFromString(data);

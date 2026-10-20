@@ -5,9 +5,9 @@ namespace Ps4PkgSender.Models.Structs;
 
 public record InstallRequest
 {
-    [JsonPropertyName("action")]
-    public string Action { get; } = "install";
+    [JsonPropertyName("type")]
+    public string Type { get; } = "direct";
 
-    [JsonPropertyName("url")]
-    public string Url { get; set; } = String.Empty;
+    [JsonPropertyName("packages")]
+    public string[] Packages { get; set; } = new string[1];
 }

@@ -1,5 +1,8 @@
 using System;
+using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -9,42 +12,47 @@ namespace Ps4PkgSender.Models.Structs;
 
 public class RequestSender : IDisposable
 {
-    private TcpClient client = new();
+    private HttpClient client = new();
 
-    async public Task ConnectToPs4(string ps4IP)
+    public RequestSender(string ps4IP)
     {
-        if (IPAddress.TryParse(ps4IP, out IPAddress? IP) == false)
-        {
-            throw new("Invalid PS4 IP");
-        }
-        else if (IP.AddressFamily != AddressFamily.InterNetwork)
-        {
-            throw new("Not IPv4 IP Address");
-        }
-        
-        await client.ConnectAsync(ps4IP, 9090);
-        Console.Write("Connected to PS4");
+        this.client.BaseAddress = new Uri(ps4IP + ":12800");
     }
 
     async public Task SendInstallCommand(string pcIP, string pkgName)
     {
         System.Console.WriteLine($"Sending \"{pkgName}\" Install Command");
 
-        NetworkStream stream = client.GetStream();
-        InstallRequest request = new() { Url = $"http://{pcIP}:7777/{pkgName}" };
-        byte[] bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request));
-        await stream.WriteAsync(bytes);
-        await stream.FlushAsync();
+        InstallRequest request = new();
+        request.Packages = [$"http://{pcIP}:7777/{pkgName}"];
 
-        client.Close(); // REFACTOR SA SE INCHIDA CLIENTUL DUPA MESAJ
+        using var response = await client.PostAsJsonAsync("api/install", request);
 
         System.Console.WriteLine("Sent install command");
+    }
+
+    async public Task<TaskID> GetTaskID(string contentID, PKGType subtype)
+    {
+        System.Console.WriteLine($"Getting {contentID} taskID");
+
+        TaskRequest request = new();
+        request.ContentID = contentID;
+        request.Subtype = subtype switch
+        {
+            PKGType.Game => 6,
+            PKGType.DLC => 7,
+            PKGType.Update => 8,
+            _ => 9
+        };
+
+        using var response = await client.PostAsJsonAsync("/api/find_task", request);
+        TaskID taskID = await response.Content.ReadFromJsonAsync<TaskID>() ?? new TaskID();
+        return taskID;
     }
 
     public void Dispose()
     {
         GC.SuppressFinalize(this);
-        client.Close();
         client.Dispose();
     }
 }

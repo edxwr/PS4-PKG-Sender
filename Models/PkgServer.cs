@@ -10,6 +10,7 @@ public class PkgServer : IDisposable
 {
     private readonly HttpListener server;
     public event Action? FileTransferred;
+    public event Action<long>? BytesTransferred;
 
     public PkgServer(string localIp)
     {
@@ -70,14 +71,18 @@ public class PkgServer : IDisposable
         long pkgSize = new FileInfo(fullPkgPath).Length;
 
         response.ContentLength64 = pkgSize;
+        response.AddHeader("application", "octet-stream");
         Stream output = ctx.Response.OutputStream;
 
         using FileStream fs = File.OpenRead(fullPkgPath);
         byte[] buffer = new byte[1024 * 64];
         int bytesRead;
+        long totalTransferred = 0;
         while ((bytesRead = await fs.ReadAsync(buffer)) > 0)
         {
             await output.WriteAsync(buffer.AsMemory(0, bytesRead));
+            totalTransferred += bytesRead;
+            BytesTransferred?.Invoke(totalTransferred);
         }
         output.Close();
         FileTransferred?.Invoke();
