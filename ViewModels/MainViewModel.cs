@@ -8,9 +8,12 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Dto;
 using Ps4PkgSender.Models;
 using Ps4PkgSender.Models.Structs;
 using Ps4PkgSender.Models.Utils;
+using Tmds.DBus.Protocol;
 
 namespace Ps4PkgSender.ViewModels;
 
@@ -22,7 +25,7 @@ public partial class MainViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(StartTransferCommand))]
     public partial string Ps4IP { get; set; } = "";
 
-    public ObservableCollection<PKGInfo> Pkgs { get; } = [];
+    public ObservableCollection<PKGInfo> Pkgs { get; set; } = [];
     private readonly Dictionary<string, string> pkgPaths = [];
 
     public RequestSender? sender;
@@ -99,18 +102,27 @@ public partial class MainViewModel : ViewModelBase
             httpServer.StartServing(pkgPaths);
         } catch (Exception e)
         {
-            System.Console.WriteLine($"Error starting http server: {e}");
             httpServer.StopServing();
+
+            System.Console.WriteLine($"Error starting http server: {e}");
+            await ShowPopup("Server Error", "Error while starting HTTP Server");
+
             return;
         }
 
         sender = new(Ps4IP);
         IsTransferring = true;
         isPaused = false;
+        bool successful = true;
 
-        foreach (PKGInfo pkg in Pkgs.ToList().OrderBy((pkgInfo) => pkgInfo.Type))
+        var sortedPkgs = Pkgs.OrderBy((pkgInfo) => pkgInfo.Type);
+        Pkgs.Clear();
+        foreach (PKGInfo pkg in sortedPkgs)
+            Pkgs.Add(pkg);
+
+        try 
         {
-            try
+            foreach (PKGInfo pkg in Pkgs)
             {
                 var tcs = new TaskCompletionSource();
                 void OnTransferDone(){
@@ -127,16 +139,20 @@ public partial class MainViewModel : ViewModelBase
                 await sender.SendInstallCommand(PcIP, pkg.FileName);
 
                 taskID.Id = (await sender.GetTaskID(pkg.ContentID, pkg.Type)).Id;
+
                 TotalSize = pkg.Size;
                 CurrentPKG = pkg;
 
                 await tcs.Task;
+
                 httpServer.FileTransferred -= OnTransferDone;
                 httpServer.BytesTransferred -= OnBytesTransferred;
-            } catch (Exception e)
-            {
-                System.Console.WriteLine($"Error while sending PKG {pkg.FileName}: {e}");
             }
+        } catch (Exception e)
+        {
+            System.Console.WriteLine($"Error while transferring to PS4: {e}");
+            await ShowPopup("PS4 Error", "Error while transferring to the PS4");
+            successful = false;
         }
 
         httpServer.StopServing();
@@ -145,7 +161,13 @@ public partial class MainViewModel : ViewModelBase
         IsTransferring = false;
         isPaused = false;
 
-        System.Console.WriteLine("All files transferred");
+        if (successful)
+        {
+            Pkgs.Clear();
+            pkgPaths.Clear();
+        }
+
+        System.Console.WriteLine("Transfer ended");
     }
 
     private bool CanPauseResume() => IsTransferring && sender is not null;
@@ -170,5 +192,14 @@ public partial class MainViewModel : ViewModelBase
         if (sender is null)
             return;
         await sender.SendCancelCommand(taskID);
+    }
+
+    private async Task ShowPopup(string title, string message)
+    {
+        await MessageBoxManager.GetMessageBoxStandard(
+            title,
+            message,
+            MsBox.Avalonia.Enums.ButtonEnum.Ok
+        ).ShowAsync();
     }
 }

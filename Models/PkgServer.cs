@@ -35,14 +35,8 @@ public class PkgServer : IDisposable
     {
         while (server.IsListening)
         {
-            try
-            {   
-                var ctx = server.GetContext();
-                await ProcessRequest(ctx, pkgPaths);
-            } catch
-            {
-                Console.Write("Eroare la ListenForPs4");
-            }
+            var ctx = server.GetContext();
+            await ProcessRequest(ctx, pkgPaths);
         }
     }
 
