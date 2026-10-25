@@ -11,8 +11,8 @@ public static class PKGUtil
     // https://www.psdevwiki.com/ps4/PKG_files#Structure
     public static PKGInfo GetInfoFromPath(string path)
     {
-        FileStream fs = File.OpenRead(path);
-        BinaryReader reader = new(fs);
+        using FileStream fs = File.OpenRead(path);
+        using BinaryReader reader = new(fs);
 
         UInt32 magic = reader.ReadUInt32();
         if (magic != 0x544E437F)

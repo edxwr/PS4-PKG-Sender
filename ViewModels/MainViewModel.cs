@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MsBox.Avalonia;
@@ -28,30 +29,21 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<PKGInfo> Pkgs { get; set; } = [];
     private readonly Dictionary<string, string> pkgPaths = [];
 
-    public RequestSender? sender;
-    private readonly PkgServer httpServer;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(StartTransferCommand))]
 
-    private readonly TaskID taskID = new();
-    private bool isPaused = false;
-    public string PauseResumeButtonText { get; set; } = "Pause";
-    public string PauseResumeButtonColor { get; set; } = "Yellow";
-    public long TransferredSize { get; set; }
-    public long TotalSize { get; set; }
-    public bool IsTransferring { get; set; }
-    public PKGInfo CurrentPKG { get; set; } = new();
+    private partial bool IsTransferring { get; set; } = false;
 
     public MainViewModel()
     {
         PcIP = Dns.GetHostEntry(String.Empty).AddressList.First(
-            ip => ip.AddressFamily == AddressFamily.InterNetwork
+            ip => ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip)
         ).ToString();
 
         Pkgs.CollectionChanged += delegate {
             StartTransferCommand.NotifyCanExecuteChanged();
             ClearPKGsCommand.NotifyCanExecuteChanged();
         };
-
-        httpServer = new(PcIP);
     }
 
     private bool CanDelete() => Pkgs.Count > 0;
@@ -62,7 +54,7 @@ public partial class MainViewModel : ViewModelBase
         else if (ip.AddressFamily != AddressFamily.InterNetwork)
             return false;
 
-        return Pkgs.Count > 0;
+        return Pkgs.Count > 0 && IsTransferring == false;
     }
 
     public void AddPKG(string path)
@@ -97,109 +89,118 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanStartTransfer))]
     public async Task StartTransfer()
     {
+        const string pkgServerPort = "7777";
+        const string infoSenderPort = "8888";
+
+        IsTransferring = true;
+
+        using PkgServer pkgServer = new(PcIP, pkgServerPort);
         try
         {   
-            httpServer.StartServing(pkgPaths);
+            pkgServer.StartServing(pkgPaths);
         } catch (Exception e)
         {
-            httpServer.StopServing();
-
             System.Console.WriteLine($"Error starting http server: {e}");
-            await ShowPopup("Server Error", "Error while starting HTTP Server");
-
+            IsTransferring = false;
+            await Dispatcher.UIThread.InvokeAsync(() => ShowPopup("Server Error", "Error while starting HTTP Server"));
             return;
         }
 
-        sender = new(Ps4IP);
-        IsTransferring = true;
-        isPaused = false;
+        SortPkgs();
+
+        var pkgMap = Pkgs.ToDictionary(pkg => pkg.FileName);
+        var completedPkgs = new HashSet<string>();
+        var allTransfersDone = new TaskCompletionSource<bool>();
+
+        foreach (PKGInfo pkg in Pkgs)
+            pkg.IsTransferring = true;
+
+        pkgServer.BytesTransferred += (fileName, bytesTransferred) =>
+        {
+            if (pkgMap.TryGetValue(fileName, out PKGInfo? pkg))
+            {
+                pkg.TransferredSize = Math.Min(pkg.Size, pkg.TransferredSize + bytesTransferred);
+            }
+        };
+
+        pkgServer.FileTransferred += (fileName) =>
+        {
+            if (pkgMap.TryGetValue(fileName, out PKGInfo? pkg))
+            {
+                if (pkg.TransferredSize >= pkg.Size)
+                    lock (completedPkgs)
+                    {
+                        completedPkgs.Add(fileName);
+                        if (completedPkgs.Count == Pkgs.Count)
+                            allTransfersDone.TrySetResult(true);
+                    }
+            }
+        };
+
+        pkgServer.TransferError += (ex) =>
+        {
+            System.Console.WriteLine($"PKG Server Error: {ex}");
+            allTransfersDone.TrySetResult(false);
+        };
+
         bool successful = true;
-
-        var sortedPkgs = Pkgs.OrderBy((pkgInfo) => pkgInfo.Type);
-        Pkgs.Clear();
-        foreach (PKGInfo pkg in sortedPkgs)
-            Pkgs.Add(pkg);
-
         try 
         {
-            foreach (PKGInfo pkg in Pkgs)
-            {
-                var tcs = new TaskCompletionSource();
-                void OnTransferDone(){
-                    tcs.TrySetResult();
-                }
-                httpServer.FileTransferred += OnTransferDone;
+            using InfoSender infoSender = new(PcIP, infoSenderPort, pkgServerPort, [.. Pkgs]);
+            infoSender.StartServing();
 
-                void OnBytesTransferred(long transferredSize)
-                {
-                    this.TransferredSize += transferredSize;
-                }
-                httpServer.BytesTransferred += OnBytesTransferred;
+            PayloadSender payloadSender = new(Ps4IP);
+            await payloadSender.SendPayload("payload.bin", PcIP, infoSenderPort);
 
-                await sender.SendInstallCommand(PcIP, pkg.FileName);
-
-                taskID.Id = (await sender.GetTaskID(pkg.ContentID, pkg.Type)).Id;
-
-                TotalSize = pkg.Size;
-                CurrentPKG = pkg;
-
-                await tcs.Task;
-
-                httpServer.FileTransferred -= OnTransferDone;
-                httpServer.BytesTransferred -= OnBytesTransferred;
-            }
+            successful = await allTransfersDone.Task;
         } catch (Exception e)
         {
             System.Console.WriteLine($"Error while transferring to PS4: {e}");
-            await ShowPopup("PS4 Error", "Error while transferring to the PS4");
             successful = false;
         }
 
-        httpServer.StopServing();
-
-        TransferredSize = TotalSize = 0;
-        IsTransferring = false;
-        isPaused = false;
-
         if (successful)
         {
+            await Dispatcher.UIThread.InvokeAsync(() => ShowPopup("Transfer Successful", $"Successfully sent all {Pkgs.Count} pkgs"));
             Pkgs.Clear();
             pkgPaths.Clear();
         }
+        else
+        {
+            await Dispatcher.UIThread.InvokeAsync(() => ShowPopup("PS4 Error", $"Error while transferring to the PS4. Transferred {completedPkgs.Count}/{Pkgs.Count} PKGs"));
+            foreach (PKGInfo pkg in Pkgs)
+            {
+                if (pkg.TransferredSize == pkg.Size)
+                {
+                    pkgPaths.Remove(pkg.FileName);
+                    Pkgs.Remove(pkg);
+                }
+                else
+                {
+                    pkg.TransferredSize = 0;
+                    pkg.IsTransferring = false;
+                }
+            }
+        }
 
+        IsTransferring = false;
         System.Console.WriteLine("Transfer ended");
     }
 
-    private bool CanPauseResume() => IsTransferring && sender is not null;
-    [RelayCommand(CanExecute = nameof(CanPauseResume))]
-    public async Task PauseResumeTransfer()
-    {
-        if (sender is null)
-            return;
-        
-        if (isPaused)
-            await sender.SendResumeCommand(taskID);
-        else
-            await sender.SendPauseCommand(taskID);
-
-        isPaused = !isPaused;
-    }
-
-    private bool CanCancel() => IsTransferring && sender is not null;
-    [RelayCommand(CanExecute = nameof(CanCancel))]
-    public async Task CancelTransfer()
-    {
-        if (sender is null)
-            return;
-        await sender.SendCancelCommand(taskID);
-    }
-
-    private async Task ShowPopup(string title, string message)
+    private static async Task ShowPopup(string title, string message)
     {
         await MessageBoxManager.GetMessageBoxStandard(
             title,
             message,
             MsBox.Avalonia.Enums.ButtonEnum.Ok
         ).ShowAsync();
+    }
+
+    private void SortPkgs()
+    {
+        var sortedPkgs = Pkgs.OrderBy((pkgInfo) => pkgInfo.Type).ToList();
+        Pkgs.Clear();
+        foreach (PKGInfo pkg in sortedPkgs)
+            Pkgs.Add(pkg);
     }
 }
