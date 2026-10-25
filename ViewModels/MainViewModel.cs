@@ -161,7 +161,7 @@ public partial class MainViewModel : ViewModelBase
 
         if (successful)
         {
-            await Dispatcher.UIThread.InvokeAsync(() => ShowPopup("Transfer Successful", $"Successfully sent all {Pkgs.Count} pkgs"));
+            await Dispatcher.UIThread.InvokeAsync(() => ShowPopup("Transfer Successful", $"Successfully sent all {Pkgs.Count} PKGs"));
             Pkgs.Clear();
             pkgPaths.Clear();
         }
