@@ -25,10 +25,6 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Compile Remove="Tests\**" />
-    <Content Remove="Tests\**" />
-    <EmbeddedResource Remove="Tests\**" />
-    <None Remove="Tests\**" />
     <EmbeddedResource Include="Payload/payload.bin"/>
   </ItemGroup>
 </Project>
